@@ -26,33 +26,78 @@ const lifeCycleData = [
   { State: "Release Build Deployed", Time: "January 12, 2024 02:02:02", Branch: "Backend" }
 ];
 
-// This function transforms the `lifecycleData` into the format required by React Flow 
 const processFlowchartData = (input) => {
-  const nodes = input.map((item, index) => ({
-    id: `${index}`,
-    data: {
-      label: (
-        <div>
-          <strong>{item.State}</strong>
-          <div>{item.Time}</div>
-          {item.Branch && <div>({item.Branch})</div>}
-        </div>
-      ),
-    },
-    position: { x: item.Branch === "Frontend" ? 200 : item.Branch === "Backend" ? 600 : 400, y: index * 100 },
-  }));
+  const uniqueBranches = Array.from(
+    new Set(input.map((item) => item.Branch || "null"))
+  );
+
+  const nullBranch = "null";
+  const middleX = 400; // X-position for the "null" branch
+  const branchPositions = {};
+
+  uniqueBranches.forEach((branch, index) => {
+    if (branch === nullBranch) {
+      branchPositions[branch] = middleX;
+    } else {
+      const direction = index % 2 === 0 ? -1 : 1; // Alternate directions
+      branchPositions[branch] = middleX + direction * (200 + index * 100);
+    }
+  });
+
+  const branchSequenceMap = {};
+  const nodes = input.map((item, index) => {
+    const branch = item.Branch || nullBranch;
+
+    if (!branchSequenceMap[branch]) branchSequenceMap[branch] = 0;
+
+    // Increase the vertical spacing by changing the multiplier (150 instead of 100)
+    const yPosition =
+      branch === nullBranch
+        ? branchSequenceMap[branch] * 120 // Null nodes spaced out
+        : 200 + branchSequenceMap[branch] * 120; // Non-null nodes spaced out
+
+    branchSequenceMap[branch]++;
+
+    return {
+      id: `${index}`,
+      data: {
+        label: (
+          <div>
+            <strong>{item.State}</strong>
+            <div>{item.Time}</div>
+            {item.Branch && <div>({item.Branch})</div>}
+          </div>
+        ),
+      },
+      position: {
+        x: branchPositions[branch],
+        y: yPosition,
+      },
+    };
+  });
 
   const edges = [];
   const branchMap = new Map();
 
   input.forEach((item, index) => {
-    const branch = item.Branch || "null";
+    const branch = item.Branch || nullBranch;
 
     if (branchMap.has(branch)) {
       const prevIndex = branchMap.get(branch);
-      edges.push({ id: `e${prevIndex}-${index}`, source: `${prevIndex}`, target: `${index}`, type: "smoothstep" });
-    } else if (index > 0) {
-      edges.push({ id: `e${index - 1}-${index}`, source: `${index - 1}`, target: `${index}`, type: "smoothstep" });
+      edges.push({
+        id: `e${prevIndex}-${index}`,
+        source: `${prevIndex}`,
+        target: `${index}`,
+        type: "smoothstep",
+      });
+    } else if (branch !== nullBranch && branchMap.has(nullBranch)) {
+      const prevIndex = branchMap.get(nullBranch);
+      edges.push({
+        id: `e${prevIndex}-${index}`,
+        source: `${prevIndex}`,
+        target: `${index}`,
+        type: "smoothstep",
+      });
     }
 
     branchMap.set(branch, index);
@@ -60,6 +105,8 @@ const processFlowchartData = (input) => {
 
   return { nodes, edges };
 };
+
+
 
 function Flowchart({ data }) {
   const { nodes, edges } = processFlowchartData(data);
