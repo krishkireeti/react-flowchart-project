@@ -39,7 +39,7 @@ const processFlowchartData = (input) => {
     if (branch === nullBranch) {
       branchPositions[branch] = middleX;
     } else {
-      const direction = index % 2 === 0 ? -1 : 1; // Alternate directions
+      const direction = index % 2 === 0 ? 1 : -1; // Alternate directions
       branchPositions[branch] = middleX + direction * (200 + index * 100);
     }
   });
